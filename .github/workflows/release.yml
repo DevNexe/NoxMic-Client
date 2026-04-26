@@ -40,12 +40,12 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           pip install -r requirements.txt
+          pip install zstandard
 
       - name: Build Windows EXE
         if: runner.os == 'Windows'
         run: |
-          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --windows-console-mode=disable --include-data-files="MaterialSymbolsRounded.ttf=./" --include-data-files="icon.ico=./" --windows-icon-from-ico=icon.ico main.py -o ${{ matrix.artifact_name }}
-
+          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --windows-console-mode=disable --include-data-files="MaterialSymbolsRounded.ttf=./" --include-data-files="icon.ico=./" --windows-icon-from-ico=icon.ico --assume-yes-for-downloads main.py -o ${{ matrix.artifact_name }}
       - name: Build Linux Binary
         if: runner.os == 'Linux'
         run: |
