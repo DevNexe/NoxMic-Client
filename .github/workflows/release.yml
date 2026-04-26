@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # Запуск при пуше тега, например v1.0.0
+      - 'v*'
 
 jobs:
   build:
@@ -29,7 +29,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # Специфичные зависимости для Linux (PyAudio)
       - name: Install PortAudio (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -37,23 +36,20 @@ jobs:
           sudo apt-get install -y libportaudio2 portaudio19-dev libasound2-dev python3-dev
           pip install -r requirements.txt
 
-      # Зависимости для Windows
       - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
           pip install -r requirements.txt
 
-      # Компиляция под Windows
       - name: Build Windows EXE
         if: runner.os == 'Windows'
         run: |
-          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --windows-disable-console --include-data-files="MaterialSymbolsRounded.ttf=." --windows-icon-from-ico=icon.ico main.py -o ${{ matrix.artifact_name }}
+          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --windows-console-mode=disable --include-data-files="MaterialSymbolsRounded.ttf=./" --include-data-files="icon.ico=./" --windows-icon-from-ico=icon.ico main.py -o ${{ matrix.artifact_name }}
 
-      # Компиляция под Linux
       - name: Build Linux Binary
         if: runner.os == 'Linux'
         run: |
-          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-data-files="MaterialSymbolsRounded.ttf=." --include-data-files="icon.ico=." main.py -o ${{ matrix.artifact_name }}
+          python -m nuitka --standalone --onefile --enable-plugin=pyside6 --include-data-files="MaterialSymbolsRounded.ttf=./" --include-data-files="icon.ico=./" main.py -o ${{ matrix.artifact_name }}
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
