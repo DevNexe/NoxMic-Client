@@ -13,10 +13,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: NoxMic-Pro.exe
+            artifact_name: NoxMic.exe
             bundle_name: Windows-Build
           - os: ubuntu-latest
-            artifact_name: NoxMic-Pro.bin
+            artifact_name: NoxMic.bin
             bundle_name: Linux-Build
 
     steps:
@@ -77,8 +77,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            NoxMic-Pro.exe
-            NoxMic-Pro.bin
+            NoxMic.exe
+            NoxMic.bin
           draft: false
           prerelease: false
         env:
