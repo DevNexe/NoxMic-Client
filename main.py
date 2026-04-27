@@ -43,6 +43,13 @@ class AudioStreamThread(QThread):
             if not target_url.startswith(('http://', 'https://')):
                 target_url = 'http://' + target_url
 
+            try:
+                request = urllib.request.Request(target_url)
+                response = urllib.request.urlopen(request, timeout=5)
+            except Exception as e:
+                self.error_signal.emit(f"Connection failed: {e}")
+                return
+
             stream = p.open(format=pyaudio.paInt16, 
                           channels=1, 
                           rate=44100, 
@@ -50,25 +57,33 @@ class AudioStreamThread(QThread):
                           output_device_index=self.output_device_index,
                           frames_per_buffer=self.chunk_size)
             
-            with urllib.request.urlopen(target_url, timeout=5) as response:
+            with response:
                 while self.running:
-                    chunk = response.read(self.chunk_size)
-                    if not chunk: break
-                    audio_data = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
-                    audio_data *= self.gain_factor
-                    audio_data = np.clip(audio_data, -32768, 32767)
-                    processed_chunk = audio_data.astype(np.int16).tobytes()
-                    stream.write(processed_chunk)
-                    level = min(100, int(np.abs(audio_data).max() / 327))
-                    self.volume_signal.emit(level)
-        except Exception as e:
-            self.error_signal.emit(str(e))
+                    try:
+                        chunk = response.read(self.chunk_size)
+                        if not chunk: 
+                            break
+                        
+                        audio_data = np.frombuffer(chunk, dtype=np.int16).astype(np.float32)
+                        audio_data *= self.gain_factor
+                        audio_data = np.clip(audio_data, -32768, 32767)
+                        processed_chunk = audio_data.astype(np.int16).tobytes()
+                        stream.write(processed_chunk)
+                        
+                        level = min(100, int(np.abs(audio_data).max() / 327))
+                        self.volume_signal.emit(level)
+                    except (IncompleteRead, Exception) as e:
+                        print(f"Stream interrupted or IncompleteRead: {e}")
+                        break
         finally:
             self.running = False
             if stream:
-                try: stream.close()
+                try: 
+                    stream.stop_stream()
+                    stream.close()
                 except: pass
             p.terminate()
+            self.error_signal.emit("Finished")
 
 class NoxMicApp(QWidget):
     def __init__(self):
@@ -365,8 +380,14 @@ class NoxMicApp(QWidget):
             self.toggle_action.setText("Start Stream")
 
     def show_error(self, msg):
-        QMessageBox.critical(self, "Error", msg)
-        if self.thread.isRunning(): self.toggle_stream()
+        if msg != "Finished":
+            QMessageBox.critical(self, "Error", msg)
+        
+        self.btn_start.setText("Start Stream")
+        self.btn_start.setStyleSheet("")
+        self.bar.setValue(0)
+        self.toggle_action.setText("Start Stream")
+        self.thread.running = False
 
     def save_settings(self, path=CONFIG_FILE):
         if not os.path.exists(APPDATA_PATH): os.makedirs(APPDATA_PATH)
